@@ -174,7 +174,7 @@ public class RulerView extends View {
         float rulerLeft   = rulerBaseX;
         float rulerTop    = centerY - textValueSize;
         float rulerBottom = rulerTop + rulerHeight;
-        float rulerRight  = rulerLeft + maxWeight/0.1f/minTagWidth;
+        float rulerRight  = rulerLeft + maxWeight/0.1f * minTagWidth;
 
         RectF rectF = new RectF();
         rectF.set(rulerLeft,rulerTop,rulerRight,rulerBottom);
