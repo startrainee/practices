@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">practices</string>
+    <string name="practice_sample">练习用例</string>
+
+    <string name="page_0">page 0</string>
+    <string name="page_1">page 1</string>
+    <string name="page_2">page 2</string>
+</resources>
