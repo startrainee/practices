@@ -1,5 +1,7 @@
 package com.stardust.practices.widgets;
 
+import android.animation.TypeEvaluator;
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -8,6 +10,7 @@ import android.graphics.RectF;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
+import android.view.VelocityTracker;
 import android.view.View;
 
 import androidx.annotation.Nullable;
@@ -71,6 +74,10 @@ public class RulerView extends View {
     int lastY = 0;
     long lastTime = 0;
 
+    ValueAnimator valueAnimator = new ValueAnimator();
+
+    VelocityTracker mVelocityTracker;
+
 
     public RulerView(Context context) {
         super(context);
@@ -128,6 +135,21 @@ public class RulerView extends View {
 
         setTextWeight(80);
 
+        valueAnimator.setDuration(1000);
+        valueAnimator.setEvaluator(new TypeEvaluator<Integer>() {
+            @Override
+            public Integer evaluate(float fraction, Integer startValue, Integer endValue) {
+                return (int)(startValue * fraction * fraction);
+            }
+        });
+        valueAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                float l = (float) animation.getAnimatedValue();
+                offsetX = (int) l;
+                invalidate();
+            }
+        });
     }
 
     @Override
@@ -165,12 +187,18 @@ public class RulerView extends View {
 
 
     private void drawRuler(Canvas canvas) {
-        rulerBaseX = rulerBaseX + offsetX * 1f / minOffsetX;
+        rulerBaseX = rulerBaseX + offsetX * 1f;
         Log.d(TAG,"drawRuler() rulerBaseX:" + rulerBaseX);
         Log.d(TAG,"onTouchEvent() offsetX:" + offsetX);
+
         if(rulerBaseX >= centerX){
             rulerBaseX = centerX;
         }
+
+        if(rulerBaseX <= (centerX - maxWeight/0.1f * minTagWidth)){
+            rulerBaseX = centerX - maxWeight/0.1f * minTagWidth;
+        }
+
         float rulerLeft   = rulerBaseX;
         float rulerTop    = centerY - textValueSize;
         float rulerBottom = rulerTop + rulerHeight;
@@ -192,7 +220,7 @@ public class RulerView extends View {
                     continue;
                 }
                 String text = String.format(Locale.CHINA, "%.0f", i / 10f);
-                float charWidth = rulerTextPaint.measureText("0");
+                float charWidth = rulerTextPaint.measureText(text)/2;
                 canvas.drawText(text, rulerLeft + dx - charWidth, rulerTop + longTagHeight + charWidth * 2, rulerTextPaint);
             }
         }
@@ -245,15 +273,20 @@ public class RulerView extends View {
         int x = (int) event.getX();
         int y = (int) event.getY();
 
+        if(mVelocityTracker == null){
+            mVelocityTracker = VelocityTracker.obtain();
+        }
+        mVelocityTracker.addMovement(event);
+
         switch (event.getAction()){
             case MotionEvent.ACTION_DOWN:
                 // 记录触摸点坐标
                 isPush = true;
                 lastX = x;
                 lastY = y;
-                lastTime = System.currentTimeMillis();
                 Log.d(TAG,"onTouchEvent() ACTION_DOWN lastX: " + lastX);
                 Log.d(TAG,"onTouchEvent() ACTION_DOWN lastY: " + lastY);
+
                 return true;
             case MotionEvent.ACTION_MOVE:
                 // 计算偏移量
@@ -263,6 +296,8 @@ public class RulerView extends View {
                 }
                 offsetX = x - lastX;
                 invalidate();
+                lastX = x;
+                lastY = y;
                 // 在当前left、top、right、bottom的基础上加上偏移量
                 /*
                 int offsetY = y - lastY;
@@ -275,9 +310,29 @@ public class RulerView extends View {
             case MotionEvent.ACTION_UP:
                 isPush = false;
                 Log.d(TAG,"onTouchEvent() ACTION_UP offsetX: " + offsetX);
+                mVelocityTracker.computeCurrentVelocity(1000);
+                float velocity = mVelocityTracker.getXVelocity();
+                Log.d(TAG,"onTouchEvent() ACTION_UP velocity: " + velocity);
+                    valueAnimator.setFloatValues(velocity * 0.01f,0);
+                    valueAnimator.start();
+
                 return true;
         }
 
         return super.onTouchEvent(event);
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        if(mVelocityTracker!=null){
+            mVelocityTracker.recycle();
+            mVelocityTracker = null;
+        }
+    }
+
+    @Override
+    public void onAttachedToWindow() {
+        super.onAttachedToWindow();
     }
 }
